@@ -1,17 +1,74 @@
-<!DOCTYPE html>
-<html lang="ar">
+<!DOCTYPE html><html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قائمة المطعم</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>طلب مشوار</title>
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,geometry"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; direction: rtl; margin: 20px; }
+        #map { height: 300px; width: 100%; margin-bottom: 10px; }
+        input, button { width: 80%; padding: 10px; margin: 5px; font-size: 16px; }
+        .btn-primary { background-color: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <h1>🍽️ قائمة الطعام</h1>
-    <div id="menu"></div>
-    <button id="sendOrder">إرسال الطلب</button>
+    <h2>🚖 طلب مشوار</h2>
+    <button class="btn-primary" onclick="getCurrentLocation()">📍 استخدام موقعي الحالي</button>
+    <div id="map"></div>
+    <input id="destination" type="text" placeholder="🎯 أدخل الوجهة">
+    <button class="btn-primary" onclick="calculateFare()">💰 حساب التكلفة</button>
+    <p id="fare"></p>
+    <button class="btn-primary" onclick="sendToBot()">📩 تأكيد الطلب</button><script>
+    let map, userMarker, destMarker;
+    let userLocation = null, destination = null;
 
-    <script src="script.js"></script>
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: { lat: 15.5007, lng: 32.5599 },
+            zoom: 12
+        });
+
+        map.addListener("click", event => {
+            if (destMarker) destMarker.setMap(null);
+            destination = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+            destMarker = new google.maps.Marker({ position: destination, map: map, label: "🎯" });
+        });
+    }
+
+    function getCurrentLocation() {
+        navigator.geolocation.getCurrentPosition(position => {
+            userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+            if (userMarker) userMarker.setMap(null);
+            userMarker = new google.maps.Marker({ position: userLocation, map: map, label: "📍" });
+            map.setCenter(userLocation);
+        }, () => alert("⚠️ لم نتمكن من تحديد موقعك!"));
+    }
+
+    function calculateFare() {
+        if (!userLocation || !destination) {
+            alert("يرجى تحديد الموقع والوجهة!");
+            return;
+        }
+        let distance = google.maps.geometry.spherical.computeDistanceBetween(
+            new google.maps.LatLng(userLocation.lat, userLocation.lng),
+            new google.maps.LatLng(destination.lat, destination.lng)
+        ) / 1000;
+        let fare = (distance * 100).toFixed(2);
+        document.getElementById("fare").innerText = `💰 تكلفة المشوار: ${fare} جنيه`;
+    }
+
+    function sendToBot() {
+        if (!userLocation || !destination) {
+            alert("يرجى تحديد الموقع والوجهة!");
+            return;
+        }
+        let rideData = { pickup: userLocation, destination: destination, fare: document.getElementById("fare").innerText };
+        Telegram.WebApp.sendData(JSON.stringify(rideData));
+        alert("🚕 تم إرسال الطلب!");
+    }
+
+    window.onload = initMap;
+</script>
+
 </body>
 </html>
